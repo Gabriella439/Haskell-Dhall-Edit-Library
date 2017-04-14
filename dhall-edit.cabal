@@ -1,0 +1,45 @@
+Name: dhall-edit
+Version: 1.0.0
+Cabal-Version: >=1.8.0.2
+Build-Type: Simple
+Tested-With: GHC == 7.10.2, GHC == 8.0.1
+License: BSD3
+License-File: LICENSE
+Copyright: 2017 Gabriel Gonzalez
+Author: Gabriel Gonzalez
+Maintainer: Gabriel439@gmail.com
+Bug-Reports: https://github.com/Gabriel439/Haskell-Dhall-Edit-Library/issues
+Synopsis: Autogenerate a curses editor for a Dhall configuration file
+Description: TODO
+Category: System
+Source-Repository head
+    Type: git
+    Location: https://github.com/Gabriel439/Haskell-Dhall-Edit-Library
+
+Library
+    Hs-Source-Dirs: src
+    Build-Depends:
+          base >= 4.8.0.0 && < 5
+        , brick
+        , containers
+        , dhall
+        , text
+        , transformers
+        , vty
+    Exposed-Modules: Dhall.Edit
+    GHC-Options: -Wall
+
+Executable dhall-edit
+    Hs-Source-Dirs: exec
+    Main-Is: Main.hs
+    Build-Depends:
+          base >= 4.8.0.0  && < 5
+        , brick
+        , dhall
+        , dhall-edit
+        , optparse-generic
+        , text
+        , transformers
+        , trifecta
+        , vty
+    GHC-Options: -Wall -threaded
