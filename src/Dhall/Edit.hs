@@ -138,8 +138,8 @@ dhallEdit (RecordLit kvs) = do
     let process key val = do
             -- TODO: Insert label
             let adapt widget =
-                        str (Data.Text.Lazy.unpack key)
-                    <=> (str "↳ " <+> widget)
+                        str (Data.Text.Lazy.unpack (key <> ":"))
+                    <=> (str "  " <+> widget)
             modifyWidget adapt (dhallEdit val)
     kvs' <- Data.Map.traverseWithKey process kvs
     return (RecordLit kvs')
