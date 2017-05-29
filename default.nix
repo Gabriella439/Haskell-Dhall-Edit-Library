@@ -1,5 +1,6 @@
-{ mkDerivation, base, brick, containers, dhall, optparse-generic
-, stdenv, text, transformers, trifecta, vty
+{ mkDerivation, base, brick, containers, dhall, microlens
+, optparse-generic, stdenv, text, text-zipper, transformers
+, trifecta, vty
 }:
 mkDerivation {
   pname = "dhall-edit";
@@ -8,7 +9,8 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base brick containers dhall text transformers vty
+    base brick containers dhall microlens text text-zipper transformers
+    vty
   ];
   executableHaskellDepends = [
     base brick dhall optparse-generic text transformers trifecta vty
