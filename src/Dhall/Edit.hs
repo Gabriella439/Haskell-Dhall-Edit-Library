@@ -194,7 +194,7 @@ dhallEdit (TextLit builder) = do
     return (
         let lazyText' = Data.Text.Lazy.fromStrict strictText'
             builder'  = Data.Text.Lazy.Builder.fromLazyText lazyText'
-        in TextLit builder' )
+        in  TextLit builder' )
 dhallEdit (BoolLit bool) = fmap BoolLit (editBool bool)
 dhallEdit (DoubleLit n) = absorb (do
     let toText n = Data.Text.pack (show n)
@@ -232,3 +232,15 @@ dhallEdit (ListLit t xs) = do
             modifyWidget adapt (dhallEdit val)
     xs' <- traverse process xs
     return (ListLit t xs')
+dhallEdit (OptionalLit t xs) = do
+    let process val = do
+            let adapt widget = str "• " <+> widget
+            modifyWidget adapt (dhallEdit val)
+    xs' <- traverse process xs
+    return (OptionalLit t xs')
+dhallEdit (UnionLit key val kts) = do
+    let adapt widget =
+                str (Data.Text.Lazy.unpack (key <> ":"))
+            <=> (str "  " <+> widget)
+    val' <- modifyWidget adapt (dhallEdit val)
+    return (UnionLit key val' kts)
