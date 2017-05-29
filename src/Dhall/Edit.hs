@@ -196,12 +196,11 @@ dhallEdit (TextLit builder) = do
             builder'  = Data.Text.Lazy.Builder.fromLazyText lazyText'
         in TextLit builder' )
 dhallEdit (BoolLit bool) = fmap BoolLit (editBool bool)
-dhallEdit (NaturalLit n) = absorb (do
-    let toText n = "+" <> Data.Text.pack (show n)
+dhallEdit (DoubleLit n) = absorb (do
+    let toText n = Data.Text.pack (show n)
     let fromText text = do
-            case Data.Text.unpack text of
-                '+':string -> fmap NaturalLit (Text.Read.readMaybe string)
-                _          -> Nothing
+            let string = Data.Text.unpack text
+            fmap DoubleLit (Text.Read.readMaybe string)
     text <- editText (toText n)
     return (fromText text) )
 dhallEdit (IntegerLit n) = absorb (do
@@ -209,6 +208,14 @@ dhallEdit (IntegerLit n) = absorb (do
     let fromText text = do
             let string = Data.Text.unpack text
             fmap IntegerLit (Text.Read.readMaybe string)
+    text <- editText (toText n)
+    return (fromText text) )
+dhallEdit (NaturalLit n) = absorb (do
+    let toText n = "+" <> Data.Text.pack (show n)
+    let fromText text = do
+            case Data.Text.unpack text of
+                '+':string -> fmap NaturalLit (Text.Read.readMaybe string)
+                _          -> Nothing
     text <- editText (toText n)
     return (fromText text) )
 dhallEdit (RecordLit kvs) = do
