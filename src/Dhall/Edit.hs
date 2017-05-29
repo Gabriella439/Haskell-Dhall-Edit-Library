@@ -200,8 +200,15 @@ dhallEdit (NaturalLit n) = absorb (do
     let toText n = "+" <> Data.Text.pack (show n)
     let fromText text = do
             case Data.Text.unpack text of
-                '+':cs -> fmap NaturalLit (Text.Read.readMaybe cs)
-                _      -> Nothing
+                '+':string -> fmap NaturalLit (Text.Read.readMaybe string)
+                _          -> Nothing
+    text <- editText (toText n)
+    return (fromText text) )
+dhallEdit (IntegerLit n) = absorb (do
+    let toText n = Data.Text.pack (show n)
+    let fromText text = do
+            let string = Data.Text.unpack text
+            fmap IntegerLit (Text.Read.readMaybe string)
     text <- editText (toText n)
     return (fromText text) )
 dhallEdit (RecordLit kvs) = do
