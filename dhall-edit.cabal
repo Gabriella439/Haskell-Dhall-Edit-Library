@@ -23,7 +23,9 @@ Library
         , brick
         , containers
         , dhall
+        , microlens
         , text
+        , text-zipper
         , transformers
         , vty
     Exposed-Modules: Dhall.Edit

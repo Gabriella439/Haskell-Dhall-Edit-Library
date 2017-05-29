@@ -26,6 +26,8 @@ import qualified Data.Map
 import qualified Data.Text
 import qualified Data.Text.Lazy
 import qualified Data.Text.Lazy.Builder
+import qualified Data.Text.Zipper
+import qualified Lens.Micro
 
 -- TODO: Don't use 99 for Viewport
 
@@ -93,8 +95,8 @@ modifyWidget f (UI x) = UI (fmap (fmap (fmap adapt)) x)
   where
     adapt (W widget, y) = (W (f widget), y)
 
-edit :: Text -> UI Text
-edit startingText = UI (Sum 1, do
+editText :: Text -> UI Text
+editText startingText = UI (Sum 1, do
     n <- Control.Monad.Trans.State.get
     Control.Monad.Trans.State.put (n + 1)
 
@@ -124,19 +126,70 @@ edit startingText = UI (Sum 1, do
 
     return (Fold step begin done) )
 
+editBool :: Bool -> UI Bool
+editBool startingBool = UI (Sum 1, do
+    n <- Control.Monad.Trans.State.get
+    Control.Monad.Trans.State.put (n + 1)
+
+    let toText :: Bool -> Text
+        toText False = "☐"
+        toText True  = "☑"
+
+    let begin :: (Bool, Editor Text Natural)
+        begin =
+            (   startingBool
+            ,   Brick.Widgets.Edit.editorText
+                    n
+                    (Brick.str . Data.Text.unpack . Data.Text.intercalate "\n")
+                    (Just 1)
+                    (toText startingBool)
+            )
+
+        step
+            :: Natural
+            -> (Bool, Editor Text Natural)
+            -> Event
+            -> EventM Natural (Bool, Editor Text Natural)
+        step n' (currentValue, editor) event =
+            if n == n'
+            then case event of
+                EvKey (KChar ' ') [] -> return toggle
+                _                    -> return nothing
+            else return nothing
+          where
+            toggle = (currentValue', editor')
+              where
+                currentValue' = not currentValue
+
+                zipper =
+                    Data.Text.Zipper.textZipper [toText currentValue'] (Just 1)
+
+                editor' =
+                    Lens.Micro.set Brick.Widgets.Edit.editContentsL zipper editor
+
+            nothing = (currentValue, editor)
+
+        done :: FocusRing Natural -> (Bool, Editor Text Natural) -> (W, Bool)
+        done r (currentValue, editor) =
+            ( W (Brick.Focus.withFocusRing r (Brick.Widgets.Edit.renderEditor) editor)
+            , currentValue
+            )
+
+    return (Fold step begin done) )
+
 
 dhallEdit :: Expr X X -> UI (Expr X X)
 dhallEdit (TextLit builder) = do
     let lazyText   = Data.Text.Lazy.Builder.toLazyText builder
     let strictText = Data.Text.Lazy.toStrict lazyText
-    strictText' <- edit strictText
+    strictText' <- editText strictText
     return (
         let lazyText' = Data.Text.Lazy.fromStrict strictText'
             builder'  = Data.Text.Lazy.Builder.fromLazyText lazyText'
         in TextLit builder' )
+dhallEdit (BoolLit bool) = fmap BoolLit (editBool bool)
 dhallEdit (RecordLit kvs) = do
     let process key val = do
-            -- TODO: Insert label
             let adapt widget =
                         str (Data.Text.Lazy.unpack (key <> ":"))
                     <=> (str "  " <+> widget)
