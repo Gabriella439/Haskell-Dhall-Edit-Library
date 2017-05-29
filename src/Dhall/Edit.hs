@@ -10,6 +10,7 @@ import Brick.Focus (FocusRing)
 import Brick.Types (BrickEvent(..))
 import Brick.Widgets.Edit (Editor)
 import Control.Applicative (liftA2)
+import Control.Monad (join)
 import Control.Monad.Trans.State (State)
 import Data.Monoid (Monoid(..), Sum(..), (<>))
 import Data.Text (Text)
@@ -28,6 +29,7 @@ import qualified Data.Text.Lazy
 import qualified Data.Text.Lazy.Builder
 import qualified Data.Text.Zipper
 import qualified Lens.Micro
+import qualified Text.Read
 
 -- TODO: Don't use 99 for Viewport
 
@@ -74,16 +76,16 @@ instance Monoid W where
     mappend (W l) (W r) = W (l <=> r)
 
 newtype UI a = UI
-    { getUI :: (Sum Natural, State Natural (Fold (W, a)))
+    { getUI :: (Sum Natural, State Natural (Fold (W, Maybe a)))
     }
 
 instance Functor UI where
-    fmap k (UI x) = UI (fmap (fmap (fmap (fmap k))) x)
+    fmap k (UI x) = UI (fmap (fmap (fmap (fmap (fmap k)))) x)
 
 instance Applicative UI where
-    pure x = UI (pure (pure (pure (pure x))))
+    pure x = UI (pure (pure (pure (pure (pure x)))))
 
-    UI l <*> UI r = UI (liftA2 (liftA2 (liftA2 (<*>))) l r)
+    UI l <*> UI r = UI (liftA2 (liftA2 (liftA2 (liftA2 (<*>)))) l r)
 
 instance Monoid a => Monoid (UI a) where
     mempty = pure mempty
@@ -94,6 +96,9 @@ modifyWidget :: (Widget Natural -> Widget Natural) -> UI a -> UI a
 modifyWidget f (UI x) = UI (fmap (fmap (fmap adapt)) x)
   where
     adapt (W widget, y) = (W (f widget), y)
+
+absorb :: UI (Maybe a) -> UI a
+absorb (UI ui) = UI (fmap (fmap (fmap (fmap join))) ui)
 
 editText :: Text -> UI Text
 editText startingText = UI (Sum 1, do
@@ -118,10 +123,10 @@ editText startingText = UI (Sum 1, do
             then Brick.Widgets.Edit.handleEditorEvent event editor
             else return editor
 
-        done :: FocusRing Natural -> Editor Text Natural -> (W, Text)
+        done :: FocusRing Natural -> Editor Text Natural -> (W, Maybe Text)
         done r editor =
             ( W (Brick.Focus.withFocusRing r (Brick.Widgets.Edit.renderEditor) editor)
-            , Data.Text.intercalate "\n" (Brick.Widgets.Edit.getEditContents editor)
+            , Just (Data.Text.intercalate "\n" (Brick.Widgets.Edit.getEditContents editor))
             )
 
     return (Fold step begin done) )
@@ -169,10 +174,13 @@ editBool startingBool = UI (Sum 1, do
 
             nothing = (currentValue, editor)
 
-        done :: FocusRing Natural -> (Bool, Editor Text Natural) -> (W, Bool)
+        done
+            :: FocusRing Natural
+            -> (Bool, Editor Text Natural)
+            -> (W, Maybe Bool)
         done r (currentValue, editor) =
             ( W (Brick.Focus.withFocusRing r (Brick.Widgets.Edit.renderEditor) editor)
-            , currentValue
+            , Just currentValue
             )
 
     return (Fold step begin done) )
@@ -188,6 +196,14 @@ dhallEdit (TextLit builder) = do
             builder'  = Data.Text.Lazy.Builder.fromLazyText lazyText'
         in TextLit builder' )
 dhallEdit (BoolLit bool) = fmap BoolLit (editBool bool)
+dhallEdit (NaturalLit n) = absorb (do
+    let toText n = "+" <> Data.Text.pack (show n)
+    let fromText text = do
+            case Data.Text.unpack text of
+                '+':cs -> fmap NaturalLit (Text.Read.readMaybe cs)
+                _      -> Nothing
+    text <- editText (toText n)
+    return (fromText text) )
 dhallEdit (RecordLit kvs) = do
     let process key val = do
             let adapt widget =

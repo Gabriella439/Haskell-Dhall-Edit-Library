@@ -65,5 +65,9 @@ main = do
             let appAttrMap _ = attrMap Graphics.Vty.Attributes.defAttr []
 
             (s', r') <- defaultMain (Brick.App {..}) (begin, Brick.Focus.focusRing [0..(numWidgets - 1)])
-            let (_, expr'') = done r' s'
-            Data.Text.Lazy.IO.writeFile file (Dhall.Core.pretty expr'')
+            let (_, mExpr'') = done r' s'
+            case mExpr'' of
+                Nothing     -> do
+                    fail "Invalid fields"
+                Just expr'' -> do
+                    Data.Text.Lazy.IO.writeFile file (Dhall.Core.pretty expr'')
