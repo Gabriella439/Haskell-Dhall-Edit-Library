@@ -226,3 +226,9 @@ dhallEdit (RecordLit kvs) = do
             modifyWidget adapt (dhallEdit val)
     kvs' <- Data.Map.traverseWithKey process kvs
     return (RecordLit kvs')
+dhallEdit (ListLit t xs) = do
+    let process val = do
+            let adapt widget = str "• " <+> widget
+            modifyWidget adapt (dhallEdit val)
+    xs' <- traverse process xs
+    return (ListLit t xs')
